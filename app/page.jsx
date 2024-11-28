@@ -3,18 +3,27 @@
 import React from 'react'
 import { useState } from 'react'
 import { Input, Button, Card, CardBody, CardHeader } from "@nextui-org/react"
+import { buildCodes, buildHuffmanTree, decodeText, encodeText, getFrequencies } from './utils'
 
 export default function Home() {
-  const [input, setInput] = useState('')
-  const [output, setOutput] = useState('')
+  const [input, setInput] = useState('');
+  const [output, setOutput] = useState('');
+  const [decoded, setDecoded] = useState(" ");
 
   const handleCompress = () => {
-    // Esta es una función de compresión simple que solo elimina espacios.
-    // En una aplicación real, aquí iría un algoritmo de compresión más complejo.
-    const compressed = input.replace(/\s+/g, '')
-    setOutput(compressed)
+    const frequencies = getFrequencies(input)
+    const huffmanTree = buildHuffmanTree(frequencies)
+    const codes = buildCodes(huffmanTree)
+    const encodedText = encodeText(input, codes)
+    setOutput(encodedText)
   }
 
+  const handleDescompression = () => {
+    const frequencies = getFrequencies(input)
+    const huffmanTree = buildHuffmanTree(frequencies)
+    const decodedText = decodeText(output, huffmanTree);
+    setDecoded(decodedText);
+  }
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
       <Card className="w-full max-w-md">
@@ -31,13 +40,19 @@ export default function Home() {
           <Button color="primary" onPress={handleCompress}>
             Compress
           </Button>
+          <Button color="primary" onPress={handleDescompression}>
+            Descompress
+          </Button>
           <div>
             <h2 className="text-lg font-semibold mb-2">Compressed Output:</h2>
             <p className="p-2 bg-gray-200 rounded">{output}</p>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Descompressed Output:</h2>
+            <p className="p-2 bg-gray-200 rounded">{decoded}</p>
           </div>
         </CardBody>
       </Card>
     </div>
   )
 }
-
