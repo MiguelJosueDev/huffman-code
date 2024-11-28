@@ -1,5 +1,8 @@
+
+
 export const getFrequencies = (text) => {
     const frequencies = {};
+
     text.split('').forEach(char => {
         if (frequencies[char]) {
             frequencies[char] += 1;
@@ -40,9 +43,8 @@ export const buildCodes = (node, currentCode = "", codes = {}) => {
     return codes;
 };
 
-export const encodeText = (text, codes) => {
-    return text.split('').map(char => codes[char]).join("");
-};
+export const encodeText = (text, codes) => text.split('').map(char => codes[char]).join("");
+
 
 export const decodeText = (text, huffmanTree) => {
     let decodedText = "";
@@ -50,13 +52,16 @@ export const decodeText = (text, huffmanTree) => {
     for (let i = 0; i < text.length; i++) {
         if (text[i] === "0") {
             currentNode = currentNode.left;
+            console.log('currentNode', currentNode, "left")
         } else {
             currentNode = currentNode.right;
+            console.log('currentNode', currentNode, "right")
         }
         if (!currentNode.left && !currentNode.right) {
             decodedText += currentNode.char;
             currentNode = huffmanTree;
         }
     }
+    console.log('decodedText', currentNode)
     return decodedText;
 }
