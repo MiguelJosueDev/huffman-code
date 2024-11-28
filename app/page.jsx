@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useState } from 'react'
-import { Input, Button, Card, CardBody, CardHeader } from "@nextui-org/react"
+import { Textarea, Button, Card, CardBody, CardHeader } from "@nextui-org/react"
 import { buildCodes, buildHuffmanTree, decodeText, encodeText, getFrequencies } from './utils'
 
 export default function Home() {
@@ -31,7 +31,7 @@ export default function Home() {
           <h1 className="text-2xl font-bold">Text Compressor</h1>
         </CardHeader>
         <CardBody className="space-y-4">
-          <Input
+          <Textarea
             label="Enter text to compress"
             value={input}
             onChange={(e) => setInput(e.target.value)}
