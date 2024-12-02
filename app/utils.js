@@ -1,5 +1,3 @@
-
-
 export const getFrequencies = (text) => {
     const frequencies = {};
 
@@ -45,23 +43,56 @@ export const buildCodes = (node, currentCode = "", codes = {}) => {
 
 export const encodeText = (text, codes) => text.split('').map(char => codes[char]).join("");
 
-
 export const decodeText = (text, huffmanTree) => {
     let decodedText = "";
     let currentNode = huffmanTree;
     for (let i = 0; i < text.length; i++) {
         if (text[i] === "0") {
             currentNode = currentNode.left;
-            console.log('currentNode', currentNode, "left")
         } else {
             currentNode = currentNode.right;
-            console.log('currentNode', currentNode, "right")
         }
         if (!currentNode.left && !currentNode.right) {
             decodedText += currentNode.char;
             currentNode = huffmanTree;
         }
     }
-    console.log('decodedText', currentNode)
     return decodedText;
-}
+};
+
+export const compressFile = (inputFile, callback) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+        const text = reader.result;
+        const frequencies = getFrequencies(text);
+        const huffmanTree = buildHuffmanTree(frequencies);
+        const codes = buildCodes(huffmanTree);
+        const encodedText = encodeText(text, codes);
+
+        const compressedData = JSON.stringify({ encodedText, codes });
+
+        const blob = new Blob([compressedData], { type: 'application/json' });
+        callback(blob);
+    };
+
+    reader.readAsText(inputFile);
+};
+
+export const decompressFile = (inputFile, callback) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+        const compressedData = JSON.parse(reader.result);
+        const { encodedText, codes } = compressedData;
+
+        const frequencies = getFrequencies(Object.keys(codes).join(''));
+        const huffmanTree = buildHuffmanTree(frequencies);
+        const decodedText = decodeText(encodedText, huffmanTree);
+
+        const blob = new Blob([decodedText], { type: 'text/plain' });
+        callback(blob);
+    };
+
+    reader.readAsText(inputFile);
+};

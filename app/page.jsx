@@ -1,11 +1,9 @@
 'use client'
 
-import React from 'react'
-import { useState } from 'react'
-import { Textarea, Button, CardHeader, Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Card, CardBody, Progress } from '@nextui-org/react'
-import { buildCodes, buildHuffmanTree, decodeText, encodeText, getFrequencies } from './utils'
+import React, { useState } from 'react'
+import { Button, Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Card, CardBody, Progress } from '@nextui-org/react'
+import { compressFile, decompressFile } from './utils'
 import { Upload, Zap, Shield, Sparkles } from 'lucide-react'
-
 
 function FeatureItem({ icon, title, children }) {
   return (
@@ -22,40 +20,31 @@ function FeatureItem({ icon, title, children }) {
 }
 
 export default function Home() {
-  const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
-  const [decoded, setDecoded] = useState(" ");
+  const [compressedBlob, setCompressedBlob] = useState(null);
+  const [decompressedBlob, setDecompressedBlob] = useState(null);
   const [dragActive, setDragActive] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
 
-  const handleDrop = (e) => {
-    e.preventDefault()
-    setDragActive(false)
-    let progress = 0
-    const interval = setInterval(() => {
-      progress += 10
-      setUploadProgress(progress)
-      if (progress >= 100) {
-        clearInterval(interval)
-        setTimeout(() => setUploadProgress(0), 1000)
-      }
-    }, 200)
-  }
+  const handleFileUpload = async (event, action) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-  const handleCompress = () => {
-    const frequencies = getFrequencies(input)
-    const huffmanTree = buildHuffmanTree(frequencies)
-    const codes = buildCodes(huffmanTree)
-    const encodedText = encodeText(input, codes)
-    setOutput(encodedText)
-  }
+    if (action === "compress") {
+      compressFile(file, (blob) => setCompressedBlob(blob));
+    } else if (action === "decompress") {
+      decompressFile(file, (blob) => setDecompressedBlob(blob));
+    }
+  };
 
-  const handleDescompression = () => {
-    const frequencies = getFrequencies(input)
-    const huffmanTree = buildHuffmanTree(frequencies)
-    const decodedText = decodeText(output, huffmanTree);
-    setDecoded(decodedText);
-  }
+  const downloadBlob = (blob, fileName) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-purple-700 to-indigo-900 text-white relative overflow-hidden">
@@ -144,67 +133,73 @@ export default function Home() {
                   onDragEnter={() => setDragActive(true)}
                   onDragLeave={() => setDragActive(false)}
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={handleDrop}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragActive(false);
+                    handleFileUpload(e, "compress");
+                  }}
                 >
                   <CardBody className="py-12">
-                    <CardHeader className="flex justify-center">
-                      <h1 className="text-2xl font-bold">Text Compressor</h1>
-                    </CardHeader>
-                    <CardBody className="space-y-4">
-                      <Textarea
-                        label="Enter text to compress"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Type your text here..."
-                      />
-                      <Button color="primary" onPress={handleCompress}>
-                        Compress
-                      </Button>
-                      <Button color="primary" onPress={handleDescompression}>
-                        Descompress
-                      </Button>
-                      <div>
-                        <h2 className="text-lg font-semibold mb-2">Compressed Output:</h2>
-                        <p className="p-2 bg-gray-200 rounded">{output}</p>
+                    <div className="flex flex-col items-center gap-6 text-center">
+                      <div className="p-6 bg-purple-600 rounded-full">
+                        <Upload className="w-12 h-12 text-yellow-400" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-semibold mb-2">Descompressed Output:</h2>
-                        <p className="p-2 bg-gray-200 rounded">{decoded}</p>
+                        <input
+                          type="file"
+                          accept=".txt"
+                          onChange={(e) => handleFileUpload(e, "compress")}
+                          className="mb-4"
+                        />
+                        {compressedBlob && (
+                          <Button
+                            color="warning"
+                            size="lg"
+                            onClick={() => downloadBlob(compressedBlob, "compressed.json")}
+                          >
+                            Descargar archivo comprimido
+                          </Button>
+                        )}
+                        <p className="text-purple-200">
+                          o arrastra y suelta tus imágenes aquí
+                        </p>
                       </div>
-                    </CardBody>
-                    {/* <div className="flex flex-col items-center gap-6 text-center">
-                  <div className="p-6 bg-purple-600 rounded-full">
-                    <Upload className="w-12 h-12 text-yellow-400" />
-                  </div>
-                  <div>
-                    <Button
-                      color="warning"
-                      size="lg"
-                      className="mb-4"
-                    >
-                      Seleccionar archivos
-                    </Button>
-                    <p className="text-purple-200">
-                      o arrastra y suelta tus imágenes aquí
-                    </p>
-                  </div>
-                  {uploadProgress > 0 && (
-                    <Progress
-                      size="md"
-                      value={uploadProgress}
-                      color="warning"
-                      showValueLabel={true}
-                      className="max-w-md"
-                    />
-                  )}
-                </div> */}
+                      {uploadProgress > 0 && (
+                        <Progress
+                          size="md"
+                          value={uploadProgress}
+                          color="warning"
+                          showValueLabel={true}
+                          className="max-w-md"
+                        />
+                      )}
+                    </div>
                   </CardBody>
                 </Card>
               </div>
             </div>
-          </main >
-        </div >
-      </div >
+            <hr className="my-8" />
+            <div className="text-center">
+              <h2 className="text-3xl font-bold mb-4">Sube y descomprime un archivo</h2>
+              <input
+                type="file"
+                accept=".json"
+                onChange={(e) => handleFileUpload(e, "decompress")}
+                className="mb-4"
+              />
+              {decompressedBlob && (
+                <Button
+                  color="warning"
+                  size="lg"
+                  onClick={() => downloadBlob(decompressedBlob, "decompressed.txt")}
+                >
+                  Descargar archivo descomprimido
+                </Button>
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
     </>
   )
 }
