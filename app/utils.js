@@ -1,13 +1,17 @@
+
 export const getFrequencies = (text) => {
     const frequencies = {};
+    const regex = /(\([0-9]+,[0-9]+\)|[a-z]+)/g;
+    let match;
 
-    text.split('').forEach(char => {
-        if (frequencies[char]) {
-            frequencies[char] += 1;
+    while (match = regex.exec(text)) {
+        if (frequencies[match[0]]) {
+            frequencies[match[0]] += 1;
         } else {
-            frequencies[char] = 1;
+            frequencies[match[0]] = 1;
         }
-    });
+    }
+    console.log('frequencies', frequencies);
     return frequencies;
 };
 
@@ -27,7 +31,7 @@ export const buildHuffmanTree = (frequencies) => {
         nodes.push(newNode);
         nodes.sort((a, b) => a.freq - b.freq);
     }
-
+    console.log('nodes', nodes);
     return nodes[0];
 };
 
@@ -38,61 +42,140 @@ export const buildCodes = (node, currentCode = "", codes = {}) => {
     }
     if (node.left) buildCodes(node.left, currentCode + "0", codes);
     if (node.right) buildCodes(node.right, currentCode + "1", codes);
+    console.log('codes', codes);
     return codes;
 };
 
-export const encodeText = (text, codes) => text.split('').map(char => codes[char]).join("");
+export const encodeText = (text, codes) => {
+    const compressedLZ77 = lz77Compress(text);
+    console.log('compressedLZ77', compressedLZ77);
 
-export const decodeText = (text, huffmanTree) => {
-    let decodedText = "";
-    let currentNode = huffmanTree;
-    for (let i = 0; i < text.length; i++) {
-        if (text[i] === "0") {
-            currentNode = currentNode.left;
-        } else {
-            currentNode = currentNode.right;
+    let result = '';
+    let buffer = '';
+
+    for (let i = 0; i < compressedLZ77.length; i++) {
+        buffer += compressedLZ77[i];
+
+        if (codes.hasOwnProperty(buffer)) {
+            result += codes[buffer];
+            buffer = '';
         }
+    }
+
+    if (buffer.length > 0) {
+        console.log('Unmapped characters at the end:', buffer);
+        result += buffer;
+    }
+
+    console.log('result', result);
+    return result;
+};
+
+export const huffmanDecode = (encodedText, huffmanTree) => {
+    let currentNode = huffmanTree;
+    let decodedOutput = '';
+    for (let bit of encodedText) {
+        currentNode = (bit === '0') ? currentNode.left : currentNode.right;
+
         if (!currentNode.left && !currentNode.right) {
-            decodedText += currentNode.char;
+            decodedOutput += currentNode.char;
             currentNode = huffmanTree;
         }
     }
-    return decodedText;
+    console.log('decodedOutput', decodedOutput);
+    return decodedOutput;
+}
+
+export const decodeText = (text, huffmanTree) => {
+    let decompressedHuffman = huffmanDecode(text, huffmanTree);
+    return lz77Decompress(decompressedHuffman);
 };
 
-export const compressFile = (inputFile, callback) => {
-    const reader = new FileReader();
+export const lz77Compress = (input) => {
+    const windowSize = 10;
+    const lookaheadBufferSize = 4;
+    let i = 0;
+    const output = [];
 
-    reader.onload = () => {
-        const text = reader.result;
-        const frequencies = getFrequencies(text);
-        const huffmanTree = buildHuffmanTree(frequencies);
-        const codes = buildCodes(huffmanTree);
-        const encodedText = encodeText(text, codes);
+    while (i < input.length) {
+        let match = { length: 0, distance: 0 };
+        const end = Math.min(i + lookaheadBufferSize, input.length);
 
-        const compressedData = JSON.stringify({ encodedText, codes });
+        for (let j = Math.max(0, i - windowSize); j < i; j++) {
+            let k = 0;
+            while (k < end - i && input[j + k] === input[i + k]) {
+                k++;
+            }
+            if (k > match.length) {
+                match = { length: k, distance: i - j };
+            }
+        }
 
-        const blob = new Blob([compressedData], { type: 'application/json' });
-        callback(blob);
+        if (match.length > 0 && match.length > 1) {
+            output.push(`(${match.distance},${match.length})`);
+            i += match.length;
+        } else {
+            output.push(input[i]);
+            i++;
+        }
+    }
+    console.log('output', output);
+    return output.join('');
+};
+
+export const lz77Decompress = (input) => {
+    const output = [];
+    let i = 0;
+
+    while (i < input.length) {
+        if (input[i] === '(') {
+            const end = input.indexOf(')', i);
+            const [distance, length] = input.slice(i + 1, end).split(',').map(Number);
+            const start = output.length - distance;
+            for (let j = 0; j < length; j++) {
+                output.push(output[start + j]);
+            }
+            i = end + 1;
+        } else {
+            output.push(input[i]);
+            i++;
+        }
+    }
+
+    console.log('output', output);
+
+    return output.join('');
+};
+
+export const serializeHuffmanTree = (node) => {
+    if (!node) return null;
+    return {
+        char: node.char,
+        freq: node.freq,
+        left: serializeHuffmanTree(node.left),
+        right: serializeHuffmanTree(node.right),
     };
-
-    reader.readAsText(inputFile);
 };
 
-export const decompressFile = (inputFile, callback) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-        const compressedData = JSON.parse(reader.result);
-        const { encodedText, codes } = compressedData;
-
-        const frequencies = getFrequencies(Object.keys(codes).join(''));
-        const huffmanTree = buildHuffmanTree(frequencies);
-        const decodedText = decodeText(encodedText, huffmanTree);
-
-        const blob = new Blob([decodedText], { type: 'text/plain' });
-        callback(blob);
+export const deserializeHuffmanTree = (data) => {
+    if (!data) return null;
+    const node = {
+        char: data.char,
+        freq: data.freq,
+        left: deserializeHuffmanTree(data.left),
+        right: deserializeHuffmanTree(data.right),
     };
-
-    reader.readAsText(inputFile);
+    return node;
 };
+
+// const result = lz77Compress("abracadabra");
+// console.log("abracadabra".slice(4, 7));
+// const huffmanTree = buildHuffmanTree(getFrequencies(result));
+// const codes = buildCodes(huffmanTree);
+// const encodedText = encodeText(result, codes);
+// const decodedText = decodeText(encodedText, huffmanTree);
+// console.log(codes);
+// console.log(huffmanTree);
+// console.log(result);
+// console.log(encodedText);
+// console.log(decodedText);
