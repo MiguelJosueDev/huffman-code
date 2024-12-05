@@ -48,6 +48,8 @@ export default function Home() {
   const [dragActive, setDragActive] = useState(false);
   const [fileContent, setFileContent] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [compressedBlob, setCompressedBlob] = useState(null);
+  const [decompressedBlob, setDecompressedBlob] = useState(null);
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
