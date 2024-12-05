@@ -1,10 +1,35 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { Button, Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Card, CardBody, Progress } from '@nextui-org/react'
-import { compressFile, decompressFile } from './utils'
-import { Upload, Zap, Shield, Sparkles } from 'lucide-react'
+import { Upload, Zap, Shield, Sparkles } from 'lucide-react';
+import { lz77Compress, getFrequencies, buildHuffmanTree, buildCodes, encodeText } from './utils';
 
+function handleFileUpload(event, action) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const text = e.target.result;
+    let compressedData;
+    if (action === "compress") {
+      compressedData = lz77Compress(text); // Asume que lz77Compress puede manejar texto
+      const frequencies = getFrequencies(compressedData);
+      const huffmanTree = buildHuffmanTree(frequencies);
+      const codes = buildCodes(huffmanTree);
+      const encodedText = encodeText(compressedData, codes);
+      console.log('Compressed Data:', encodedText);
+      // Aquí deberías convertir encodedText en un Blob si quieres permitir su descarga
+
+      new Blob([encodedText], { type: "text/plain" });
+
+    } else if (action === "decompress") {
+      // Lógica de descompresión si es necesaria
+    }
+  };
+  reader.readAsText(file); // Leer como texto por simplicidad, ajustar según el contenido del archivo
+}
 function FeatureItem({ icon, title, children }) {
   return (
     <div className="flex items-start space-x-4">
@@ -20,31 +45,30 @@ function FeatureItem({ icon, title, children }) {
 }
 
 export default function Home() {
-  const [compressedBlob, setCompressedBlob] = useState(null);
-  const [decompressedBlob, setDecompressedBlob] = useState(null);
-  const [dragActive, setDragActive] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
+  const [dragActive, setDragActive] = useState(false);
+  const [fileContent, setFileContent] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  const handleFileUpload = async (event, action) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    if (action === "compress") {
-      compressFile(file, (blob) => setCompressedBlob(blob));
-    } else if (action === "decompress") {
-      decompressFile(file, (blob) => setDecompressedBlob(blob));
+  const onDrop = useCallback((e) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileUpload({ target: { files: e.dataTransfer.files } }, "compress");
+      e.dataTransfer.clearData();
     }
-  };
+  }, []);
 
-  const downloadBlob = (blob, fileName) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const onDragOver = useCallback((e) => {
+    e.preventDefault();
+  }, []);
 
+  const onDragEnter = useCallback(() => {
+    setDragActive(true);
+  }, []);
+
+  const onDragLeave = useCallback(() => {
+    setDragActive(false);
+  }, []);
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-purple-700 to-indigo-900 text-white relative overflow-hidden">
@@ -130,14 +154,10 @@ export default function Home() {
                 <Card
                   className={`border-4 transition-all ${dragActive ? 'border-yellow-400 scale-105' : 'border-purple-400'
                     }`}
-                  onDragEnter={() => setDragActive(true)}
-                  onDragLeave={() => setDragActive(false)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDragActive(false);
-                    handleFileUpload(e, "compress");
-                  }}
+                  onDrop={onDrop}
+                  onDragOver={onDragOver}
+                  onDragEnter={onDragEnter}
+                  onDragLeave={onDragLeave}
                 >
                   <CardBody className="py-12">
                     <div className="flex flex-col items-center gap-6 text-center">
@@ -151,15 +171,13 @@ export default function Home() {
                           onChange={(e) => handleFileUpload(e, "compress")}
                           className="mb-4"
                         />
-                        {compressedBlob && (
-                          <Button
-                            color="warning"
-                            size="lg"
-                            onClick={() => downloadBlob(compressedBlob, "compressed.json")}
-                          >
-                            Descargar archivo comprimido
-                          </Button>
-                        )}
+                        <Button
+                          color="warning"
+                          size="lg"
+                          onClick={() => downloadBlob(compressedBlob, "compressed.json")}
+                        >
+                          Descargar archivo comprimido
+                        </Button>
                         <p className="text-purple-200">
                           o arrastra y suelta tus imágenes aquí
                         </p>
@@ -187,15 +205,13 @@ export default function Home() {
                 onChange={(e) => handleFileUpload(e, "decompress")}
                 className="mb-4"
               />
-              {decompressedBlob && (
-                <Button
-                  color="warning"
-                  size="lg"
-                  onClick={() => downloadBlob(decompressedBlob, "decompressed.txt")}
-                >
-                  Descargar archivo descomprimido
-                </Button>
-              )}
+              <Button
+                color="warning"
+                size="lg"
+                onClick={() => downloadBlob(decompressedBlob, "decompressed.txt")}
+              >
+                Descargar archivo descomprimido
+              </Button>
             </div>
           </main>
         </div>
