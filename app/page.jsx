@@ -14,7 +14,7 @@ function handleFileUpload(event, action) {
     const text = e.target.result;
     let compressedData;
     if (action === "compress") {
-      compressedData = lz77Compress(text); // Asume que lz77Compress puede manejar texto
+      compressedData = lz77Compress(text);
       const frequencies = getFrequencies(compressedData);
       const huffmanTree = buildHuffmanTree(frequencies);
       const codes = buildCodes(huffmanTree);
