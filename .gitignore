@@ -8,9 +8,10 @@
 # testing
 /coverage
 
-
+# .gitignore
+.next
 # production
-/build
+/.next
 
 # misc
 .DS_Store

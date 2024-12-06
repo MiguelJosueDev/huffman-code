@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // Puedes agregar otras configuraciones aquí si es necesario
+    reactStrictMode: true,
+    swcMinify: true,
+    "extends": [
+        "eslint:recommended",
+        "next/core-web-vitals"
+    ],
+    "rules": {
+    }
 }
 
-module.exports = nextConfig
+module.exports = nextConfig;
